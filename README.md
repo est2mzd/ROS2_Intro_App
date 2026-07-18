@@ -25,7 +25,7 @@ ros2 run turtlesim turtlesim_node
 docker exec -it turtle_sim bash
 ```
 
-## 亀を動かすコマンド
+## Turtle を動かすコマンド
 
 ```bash
 # ros2にパスを通す
@@ -650,3 +650,176 @@ source install/setup.bash
 # 実行. turtlesimのGUIが起動する
 ros2 launch cpp_turtlesim_launch turtlesim_cpp_launch.py
 ```
+
+## Launch file の実務的な使い方
+
+![ppt](./images/lauch_file_architecture.png)
+
+![ppt](./images/effective_ros2_development.png)
+
+## ROS2 Doctor
+
+- ROS2 doctor のチェック項目
+  - ros2が正しくインストールされているか
+  - DDS関連の設定に問題がないか
+  - 主要なパッケージはそろっているか
+
+```bash
+cd colcon_ws
+
+ros2 doctor
+# -> All 5 checks passed.
+
+ros2 doctor --report
+# -> 詳細結果がでる.　トラブル時は、これを共有する
+```
+
+## ノードの確認
+
+```bash
+# turtlesimの起動
+ros2 run turtlesim turtlesim_node
+
+```
+
+- 別のターミナルで確認
+
+```bash
+$ ros2 node list
+/turtlesim
+
+$ ros2 node info /turtlesim 
+/turtlesim
+  Subscribers:
+    /parameter_events: rcl_interfaces/msg/ParameterEvent
+    /turtle1/cmd_vel: geometry_msgs/msg/Twist
+  Publishers:
+
+```
+
+## 通信状態の確認
+
+- rate の値が大きく変動する場合、通信が止まっている or QoS設定が不一致の可能性あり
+
+```bash
+# 通信周期を調べる
+$ ros2 topic hz /turtle1/pose 
+average rate: 62.479
+        min: 0.015s max: 0.017s std dev: 0.00049s window: 64
+average rate: 62.488
+        min: 0.015s max: 0.017s std dev: 0.00051s window: 127
+average rate: 62.512
+        min: 0.015s max: 0.017s std dev: 0.00052s window: 190
+
+# 通信量を調べる
+$ ros2 topic bw /turtle1/pose 
+Subscribed to [/turtle1/pose]
+1.52 KB/s from 63 messages
+        Message size mean: 0.02 KB min: 0.02 KB max: 0.02 KB
+1.50 KB/s from 100 messages
+        Message size mean: 0.02 KB min: 0.02 KB max: 0.02 KB
+1.51 KB/s from 100 messages
+        Message size mean: 0.02 KB min: 0.02 KB max: 0.02 KB
+
+# 通信内容を調べる
+$ ros2 topic echo /turtle1/pose --csv > pose_log.csv
+
+5.544444561004639,5.544444561004639,0.0,0.0,0.0
+5.544444561004639,5.544444561004639,0.0,0.0,0.0
+5.544444561004639,5.544444561004639,0.0,0.0,0.0
+5.544444561004639,5.544444561004639,0.0,0.0,0.0
+5.544444561004639,5.544444561004639,0.0,0.0,0.0
+5.544444561004639,5.544444561004639,0.0,0.0,0.0
+``` 
+
+## rqtを使ったデータ解析
+
+### rqtの起動
+```bash
+rqt
+
+# Plugins -> Introspection -> Node Graph
+```
+
+![rqt](./images/rqt01.png)
+
+### rqt_graph でノード間通信の確認
+
+#### ターミナル1
+
+```bash
+# 複数ノードの起動
+cd ./colcon_ws/
+source install/setup.bash
+ros2 launch launch_basic multi_launch.py
+```
+
+#### ターミナル2
+
+```bash
+rqt
+```
+
+![rqt](./images/rqt02.png)
+
+### rqt_plot でトピックの数値を確認
+
+```bash
+# 複数ノードの起動
+cd ./colcon_ws/
+source install/setup.bash
+ros2 launch launch_basic multi_launch.py
+```
+
+#### ターミナル2
+
+```bash
+rqt
+```
+
+- rqt > plugins > visualization > plot を選択
+
+![rqt](./images/rqt03.png)
+
+
+### rqt_console でログを確認
+
+- `./colcon_ws/src/rqt_console_demo/`　を準備
+
+```bash
+# ビルドする
+cd ./colcon_ws
+colcon build
+source ./install/setup.bash
+
+# ノードを起動. 以下を出力する
+#   1秒毎に INFO
+#   3秒毎に WARN
+#   5秒毎に ERROR
+ros2 launch rqt_console_demo emit_warning.launch.py
+```
+
+[実装ファイル](./colcon_ws/src/rqt_console_demo/rqt_console_demo/emit_logs.py)
+
+ログの書き方
+
+```python
+self.get_logger().info("通常のメッセージ")
+self.get_logger().warn("警告メッセージ")
+self.get_logger().warn("エラーメッセージ")
+```
+
+#### rqt_consoleの起動
+
+別のターミナルで
+
+```bash
+rqt
+```
+
+plugins > logging > console
+
+![rqt](./images/rqt04.png)
+
+
+### rqt_publisher でメッセージを送信
