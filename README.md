@@ -1,6 +1,6 @@
 
 
-# Tertle Sim
+# ROS2 Intro and Application
 
 ## Pull Image
 
@@ -635,7 +635,7 @@ $ ros2 topic list
 
 ## Launchファイルの違い : Python vs Cpp
 
-![違い](images_app/launch_file_diff_py_cpp.png)
+![違い](./images_app/launch_file_diff_py_cpp.png)
 
 ## Cppのlaunchファイルを試す
 
