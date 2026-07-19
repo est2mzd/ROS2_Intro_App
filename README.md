@@ -823,3 +823,273 @@ plugins > logging > console
 
 
 ### rqt_publisher でメッセージを送信
+
+#### ターミナル1
+
+```bash
+# Turtlesimノードの起動
+cd ./colcon_ws/
+ros2 run turtlesim turtlesim_node
+```
+
+#### ターミナル2
+
+```bash
+rqt
+```
+
+rqt > plugins > topics > message publisher
+
+![rqt](./images/rqt05.png)
+
+
+### rqt_topic でトピックを監視
+
+- 数値は正確ではないが、クイックに調査したいときに便利
+
+#### ターミナル１
+
+```bash
+rqt
+```
+
+- rqt > plugins > topics > message publisher
+- 設定
+  - topic = /demo_value
+  - type = std_msgs/msg/String
+
+- rqt > plugins > topics > topic monitor
+
+![rqt](./images/rqt06.png)
+
+
+## rvizを使った可視化
+
+#### ターミナル１
+
+```bash
+rviz2
+```
+
+![rviz](./images/rviz01.png)
+
+- 左下の `Add` で表示対象を追加できる
+- rvizからtopicが見えない -> 同じ ROS_DOMAIN に属していない可能性あり.
+
+
+### Fixed Frame と TF表示
+
+- TF = Tranform
+
+![rviz](./images/rviz02.png)
+
+#### ターミナル１
+
+- map -> base_link への座標変換
+
+```bash
+ros2 run tf2_ros static_transform_publisher 1 1 1 0 0 0 map base_link
+```
+
+![rviz](./images/rviz03.png)
+
+- rviz2 での操作
+  - Add > TF
+  - Fixed Frame = map or base_line
+
+##### Fixed Frame = map > map が原点
+
+![rviz](./images/rviz04.png)
+
+##### Fixed Frame = base_line > base_line が原点
+
+![rviz](./images/rviz05.png)
+
+
+### Laser Scan と Point Cloud2の表示
+
+- ファイル構造
+
+![rviz](./images/rviz06.png)
+
+#### ターミナル１
+
+- rosbagディレクトリに移動し、以下を実行する
+
+```bash
+cd ./colcon_ws/rosbag/
+
+ros2 bag play sample_sensor_data/ --loop
+```
+
+#### ターミナル2
+
+- rviz2を起動し、可視化する
+
+```bash
+rviz2
+```
+
+- Laser Scanの追加
+  - Add > by topic > Laser Scan
+  - Topic = /snan
+  - Fixed Frame = laser
+
+![rviz](./images/rviz07.png)
+
+- 表示方法を変える
+  - Style : Flat squares > Points
+  - Size : 0.01 > 5
+
+![rviz](./images/rviz08.png)
+
+- Point Cloud2 の追加
+  - Add > by topic > Point Cloud2
+  - Topic = /points_raw
+  - Fixed Frame = lidar_link
+  - Style = Points
+  - Color Transformer = Axis Color > z軸の値に応じて色が変わる
+
+![rviz](./images/rviz09.png)
+
+
+### Marker / Marker Array でのカスタム可視化
+
+- ファイルを準備してビルドする
+  - `./colcon_ws/src/marker_demo_pkg/`
+
+#### ターミナル1
+
+```bash
+cd colcon_ws
+colcon build
+source ./install/setup.bash
+
+# 赤い球を 1秒ごとに送信する publisher node を動かす
+ros2 run marker_demo_pkg simple_marker_pub
+```
+
+#### ターミナル2
+
+```bash
+rviz2
+```
+
+- Markerの追加
+  - Add > by topic > Marker
+  - Topic = /visualization_marker
+  - Fixed Frame = base_link
+
+![rviz](./images/rviz10.png)
+
+- 球体が表示できない場合の注意点
+  - [simple_marker_pub.py](./colcon_ws/src/marker_demo_pkg/marker_demo_pkg/simple_marker_pub.py)
+  - m.color.a = 0.0 だと透明で見えない
+  - m.lifetime.sec = 0 > 0は無限に表示、短いとすぐに消える
+  - m.header.frame_id = 'base_link' を確認する
+
+```python
+# simple_marker_pub.py
+    def publish_marker(self):
+        m = Marker()
+        m.header.frame_id = 'base_link'
+        m.header.stamp = self.get_clock().now().to_msg()
+        m.ns = 'demo'
+        m.id = 0
+        m.type = Marker.SPHERE
+        m.action = Marker.ADD
+        m.pose.position.x = 1.0
+        m.pose.position.y = 0.0
+        m.pose.position.z = 0.5
+        m.pose.orientation.w = 1.0
+        m.scale.x = 0.3
+        m.scale.y = 0.3
+        m.scale.z = 0.3
+        m.color.r = 1.0
+        m.color.g = 0.0
+        m.color.b = 0.0
+        m.color.a = 1.0
+        m.lifetime.sec = 0
+        self.pub.publish(m)
+```
+
+
+### Marker Arrayを使った可視化
+
+- 2個のマーカー(渦巻状の折れ線 + 文字) を表示
+
+#### ターミナル1
+
+```bash
+ros2 run marker_demo_pkg array_marker_pub
+```
+
+#### ターミナル2
+
+```bash
+rviz2
+```
+
+- Markerの追加
+  - Add > by topic > Marker
+  - Topic = /visualization_marker
+  - Fixed Frame = base_link
+
+![rviz](./images/rviz11.png)
+
+
+```python
+# ./colcon_ws/src/marker_demo_pkg/marker_demo_pkg/array_marker_pub.py
+    def publish_array(self):
+        arr = MarkerArray()
+
+        line = Marker()
+        line.header.frame_id = 'base_link'
+        line.header.stamp = self.get_clock().now().to_msg()
+        line.ns = 'path'
+        line.id = 1
+        line.type = Marker.LINE_STRIP
+        line.action = Marker.ADD
+        line.scale.x = 0.05
+        line.color.r = 0.1
+        line.color.g = 0.8
+        line.color.b = 1.0
+        line.color.a = 1.0
+        line.pose.orientation.w = 1.0
+
+        line.points = []
+        for i in range(80):
+            ang = 0.2 * i + self.t
+            r = 0.02 * i
+            p = Point()
+            p.x = 0.5 + r * math.cos(ang)
+            p.y = 0.0 + r * math.sin(ang)
+            p.z = 0.1 * math.sin(0.5 * ang)
+            line.points.append(p)
+        arr.markers.append(line)
+
+        text = Marker()
+        text.header.frame_id = 'base_link'
+        text.header.stamp = line.header.stamp
+        text.ns = 'label'
+        text.id = 2
+        text.type = Marker.TEXT_VIEW_FACING # 文字が常に、画面の方を向く設定
+        text.action = Marker.ADD
+        text.pose.position.x = 0.5
+        text.pose.position.y = 0.0
+        text.pose.position.z = 1.0
+        text.scale.z = 0.2
+        text.color.r = 1.0
+        text.color.g = 1.0
+        text.color.b = 1.0
+        text.color.a = 1.0
+        text.text = 'MarkerArray demo'
+        arr.markers.append(text)
+
+        self.pub.publish(arr)
+        self.t += 0.2
+```
+
+### 実務的な rviz設定の保存と再利用
+
+![rviz](./images/rviz12.png)
